@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/babylearnstocode/bsc-token-filter/config"
 	"github.com/babylearnstocode/bsc-token-filter/crawler"
 	"github.com/babylearnstocode/bsc-token-filter/eth"
+	"github.com/babylearnstocode/bsc-token-filter/filter"
 )
 
 func main() {
@@ -14,7 +17,7 @@ func main() {
 	defer localClient.Close()
 	// Stage 0 load local cache
 
-	// Stage 1 fetch all pairs resume from cache index or 0
+	// Stage 1 fetch all pairs from index 0
 	fetchRes := crawler.Start(localClient, cfg)
 
 	// Stage 2 multicall info,
@@ -22,12 +25,13 @@ func main() {
 
 	results, _ := eth.ExecuteMulticall(localClient, calls)
 
-	crawler.DecodePairResults(results, fetchRes)
+	decoded := crawler.DecodePairResults(results, fetchRes)
 
-	// 1.1 calculate effective liquidity >= 500k USD
-
-	// 1.2 save to cache
-
+	// 1.1 filter liquidity >= 500k USD
+	// usage
+	const MinLiquidity = 5e23
+	filtered := filter.FilterHighLiquidity(decoded, MinLiquidity)
+	fmt.Println(filtered)
 	// Stage 2 activity filter: >= 200 swap per day
 
 	// Stage 3 safety filter

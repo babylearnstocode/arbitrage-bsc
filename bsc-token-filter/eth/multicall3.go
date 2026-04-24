@@ -48,7 +48,7 @@ const multicallABIJson = `
 
 var multicallABI abi.ABI
 
-func InitMultiCall3ABI() {
+func init() {
 	var err error
 	multicallABI, err = abi.JSON(strings.NewReader(multicallABIJson))
 	if err != nil {
@@ -72,6 +72,10 @@ func ExecuteMulticall(
 	calls []Call3,
 ) ([]Result, error) {
 
+	if len(calls) == 0 {
+		return nil, nil
+	}
+
 	addr := common.HexToAddress(Multicall3Address)
 
 	data, err := multicallABI.Pack("aggregate3", calls)
@@ -87,10 +91,22 @@ func ExecuteMulticall(
 		return nil, err
 	}
 
-	var out []Result
-	err = multicallABI.UnpackIntoInterface(&out, "aggregate3", res)
+	var raw []struct {
+		Success    bool
+		ReturnData []byte
+	}
+
+	err = multicallABI.UnpackIntoInterface(&raw, "aggregate3", res)
 	if err != nil {
 		return nil, err
+	}
+
+	out := make([]Result, len(raw))
+	for i, r := range raw {
+		out[i] = Result{
+			Success:    r.Success,
+			ReturnData: r.ReturnData,
+		}
 	}
 
 	return out, nil

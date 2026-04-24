@@ -21,7 +21,7 @@ func Start(client *ethclient.Client, cfg *config.Config) []common.Address {
 
 	var pairs []common.Address
 
-	for i := int64(0); i < total; i++ {
+	for i := int64(0); i < 1000; i++ {
 		if i%1000 == 0 {
 			fmt.Printf("Fetching %d / %d\n", i, total)
 		}
@@ -31,7 +31,7 @@ func Start(client *ethclient.Client, cfg *config.Config) []common.Address {
 			continue
 		}
 
-		fmt.Printf("Index %v - addr: %v", i, addr.Hex())
+		fmt.Printf("Index %v - addr: %v\n", i, addr.Hex())
 		pairs = append(pairs, addr)
 	}
 
