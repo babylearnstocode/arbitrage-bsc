@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/babylearnstocode/bsc-token-filter/config"
@@ -10,9 +11,11 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	cfg := config.LoadConfig()
 
 	localClient := eth.NewClient(cfg.IpcPath)
+	//infuraClient := eth.NewClient(cfg.ArchiveUrl)
 
 	defer localClient.Close()
 	// Stage 0 load local cache
@@ -31,15 +34,19 @@ func main() {
 	// usage
 	const MinLiquidity = 5e23
 	filtered := filter.FilterHighLiquidity(decoded, MinLiquidity)
-	fmt.Println(filtered)
-	// Stage 2 activity filter: >= 200 swap per day
+	fmt.Println(len(filtered))
+	// Stage 2 activity filter: >= 200 swap per day -- drop this
 
 	// Stage 3 safety filter
 
-	// 3.1 eth_call simulate buy_sell, tax > 0.3% no pause()
+	// 3.1 paused() check
+	filtered = filter.FilterPausedPairs(ctx, localClient, filtered)
+	fmt.Println(len(filtered))
+	// transfer tax simulation, tax > 0.3%
 
-	// stage 4 reachability filter
-	// BFS from WBNB/BNB <= 2 hops
+	// sell simulation
+
+	// max tx simulation
 
 	// Rank top 50 pairs by EL
 
