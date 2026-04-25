@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/babylearnstocode/bsc-token-filter/config"
 	"github.com/babylearnstocode/bsc-token-filter/crawler"
@@ -24,17 +25,16 @@ func main() {
 	fetchRes := crawler.Start(localClient, cfg)
 
 	// Stage 2 multicall info,
-	calls := crawler.BuildPairCalls(fetchRes)
+	pairs, err := crawler.FetchFilteredPairs(localClient, fetchRes)
 
-	results, _ := eth.ExecuteMulticall(localClient, calls)
-
-	decoded := crawler.DecodePairResults(results, fetchRes)
-
+	if err != nil {
+		log.Fatal(err)
+	}
 	// 1.1 filter liquidity >= 500k USD
 	// usage
 	const MinLiquidity = 5e22
-	filtered := filter.FilterHighLiquidity(decoded, MinLiquidity)
-
+	filtered := filter.FilterHighLiquidity(pairs, MinLiquidity)
+	fmt.Printf("filtered: %v", len(filtered))
 	// Stage 2 activity filter: >= 200 swap per day -- drop this
 
 	// Stage 3 safety filter
@@ -46,7 +46,7 @@ func main() {
 
 	// transfer tax simulation, tax > 0.3%, sell simulation
 	safeUnknown := filter.FilterHoneypotTokens(ctx, unknownTokens, 0.3)
-
+	fmt.Printf("safeUnknown: %v", len(safeUnknown))
 	// Rank top 50 tokens by Vol
 	res := filter.TopTokensByVolume(ctx, safeUnknown, 50)
 	fmt.Println(len(res))

@@ -13,6 +13,10 @@ import (
 
 const Multicall3Address = "0xcA11bde05977b3631167028862bE2a173976CA11"
 
+// ChunkSize is the max calls per multicall batch.
+// 500 is safe for local node. Lower to 200 if you see empty results.
+const ChunkSize = 500
+
 const multicallABIJson = `
 [
   {
@@ -67,15 +71,7 @@ type Result struct {
 	ReturnData []byte
 }
 
-func ExecuteMulticall(
-	client *ethclient.Client,
-	calls []Call3,
-) ([]Result, error) {
-
-	if len(calls) == 0 {
-		return nil, nil
-	}
-
+func executeBatch(client *ethclient.Client, calls []Call3) ([]Result, error) {
 	addr := common.HexToAddress(Multicall3Address)
 
 	data, err := multicallABI.Pack("aggregate3", calls)
@@ -95,19 +91,37 @@ func ExecuteMulticall(
 		Success    bool
 		ReturnData []byte
 	}
-
-	err = multicallABI.UnpackIntoInterface(&raw, "aggregate3", res)
-	if err != nil {
+	if err := multicallABI.UnpackIntoInterface(&raw, "aggregate3", res); err != nil {
 		return nil, err
 	}
 
 	out := make([]Result, len(raw))
 	for i, r := range raw {
-		out[i] = Result{
-			Success:    r.Success,
-			ReturnData: r.ReturnData,
-		}
+		out[i] = Result{Success: r.Success, ReturnData: r.ReturnData}
+	}
+	return out, nil
+}
+
+// ExecuteMulticall splits calls into chunks of ChunkSize and executes each
+// batch separately, then concatenates results in the original order.
+func ExecuteMulticall(client *ethclient.Client, calls []Call3) ([]Result, error) {
+	if len(calls) == 0 {
+		return nil, nil
 	}
 
-	return out, nil
+	var all []Result
+	for i := 0; i < len(calls); i += ChunkSize {
+		end := i + ChunkSize
+		if end > len(calls) {
+			end = len(calls)
+		}
+
+		results, err := executeBatch(client, calls[i:end])
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, results...)
+	}
+
+	return all, nil
 }
