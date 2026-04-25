@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -84,6 +85,7 @@ func TopTokensByVolume(ctx context.Context, tokens []common.Address, top int) []
 		}
 		results = append(results, TokenVolume{Address: token, VolumeH24: vol})
 		fmt.Printf("token %s - vol24h: $%.0f\n", token.Hex(), vol)
+		time.Sleep(2 * time.Second) //Rate limit
 	}
 
 	sort.Slice(results, func(i, j int) bool {
