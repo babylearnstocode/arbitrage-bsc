@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/babylearnstocode/bsc-token-filter/crawler"
+	"github.com/babylearnstocode/bsc-token-filter/eth"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -32,6 +33,7 @@ func FilterHighLiquidity(pairs []crawler.PairData, minUSD float64) []crawler.Pai
 	var out []crawler.PairData
 
 	for _, p := range pairs {
+
 		if p.LiquidityUSD >= minUSD {
 			out = append(out, p)
 		}
@@ -73,15 +75,35 @@ func IsPaused(ctx context.Context, client *ethclient.Client, token common.Addres
 	return false
 }
 
-func FilterPausedPairs(ctx context.Context, client *ethclient.Client, pairs []crawler.PairData) []crawler.PairData {
-	var out []crawler.PairData
-	for _, p := range pairs {
-		t0 := common.HexToAddress(p.Token0)
-		t1 := common.HexToAddress(p.Token1)
-		if IsPaused(ctx, client, t0) || IsPaused(ctx, client, t1) {
+func FilterPausedTokens(ctx context.Context, client *ethclient.Client, tokens []common.Address) []common.Address {
+	var out []common.Address
+	for _, t := range tokens {
+
+		if IsPaused(ctx, client, t) {
 			continue
 		}
-		out = append(out, p)
+		out = append(out, t)
 	}
 	return out
+}
+
+func ExtractUniqueTokens(pairs []crawler.PairData) (base []common.Address, unknown []common.Address) {
+	seen := make(map[common.Address]bool)
+
+	for _, p := range pairs {
+		for _, raw := range []string{p.Token0, p.Token1} {
+			addr := common.HexToAddress(raw)
+			if seen[addr] {
+				continue
+			}
+			seen[addr] = true
+
+			if eth.BaseTokens[addr] {
+				base = append(base, addr)
+			} else {
+				unknown = append(unknown, addr)
+			}
+		}
+	}
+	return base, unknown
 }

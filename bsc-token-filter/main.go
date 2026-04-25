@@ -32,22 +32,26 @@ func main() {
 
 	// 1.1 filter liquidity >= 500k USD
 	// usage
-	const MinLiquidity = 5e23
+	const MinLiquidity = 5e22
 	filtered := filter.FilterHighLiquidity(decoded, MinLiquidity)
-	fmt.Println(len(filtered))
+
 	// Stage 2 activity filter: >= 200 swap per day -- drop this
 
 	// Stage 3 safety filter
 
 	// 3.1 paused() check
-	filtered = filter.FilterPausedPairs(ctx, localClient, filtered)
-	fmt.Println(len(filtered))
-	// transfer tax simulation, tax > 0.3%
+	_, unknownTokens := filter.ExtractUniqueTokens(filtered)
 
-	// sell simulation
+	filter.FilterPausedTokens(ctx, localClient, unknownTokens)
 
-	// max tx simulation
+	// transfer tax simulation, tax > 0.3%, sell simulation
+	safeUnknown := filter.FilterHoneypotTokens(ctx, unknownTokens, 0.3)
 
-	// Rank top 50 pairs by EL
+	// Rank top 50 tokens by Vol
+	res := filter.TopTokensByVolume(ctx, safeUnknown, 50)
+	fmt.Println(len(res))
 
+	// save
+
+	filter.SaveTokens("data/data.json", res)
 }
